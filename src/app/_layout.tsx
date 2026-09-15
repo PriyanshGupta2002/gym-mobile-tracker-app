@@ -1,18 +1,26 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import "../../global.css";
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { Stack } from "expo-router";
+import { useEffect } from "react";
 
-SplashScreen.preventAutoHideAsync();
+import { useAuthStore } from "@/store/auth-store";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Toaster } from "sonner-native";
+export default function RootLayout() {
+  const restoreSession = useAuthStore((state) => state.restoreSession);
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <GestureHandlerRootView>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      />
+      <Toaster />
+    </GestureHandlerRootView>
   );
 }

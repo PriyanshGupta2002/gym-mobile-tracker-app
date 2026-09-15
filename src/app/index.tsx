@@ -1,98 +1,79 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Redirect } from "expo-router";
+import { useEffect, useState } from "react";
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { getCurrentUser } from "@/services/auth";
+import { useAuthStore } from "@/store/auth-store";
 
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
+export default function Index() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const logout = useAuthStore((state) => state.logout);
+
+  const [checkingUser, setCheckingUser] = useState(true);
+  const [currentUser, setCurrentUser] = useState<Awaited<
+    ReturnType<typeof getCurrentUser>
+  > | null>(null);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
+      setCheckingUser(false);
+      return;
+    }
+
+    const checkCurrentUser = async () => {
+      try {
+        const me = await getCurrentUser();
+
+        console.log("Current user:", me);
+
+        setCurrentUser(me);
+      } catch (error) {
+        console.error("Failed to fetch current user:", error);
+
+        // Token is invalid/expired.
+        // Clear the stored session.
+        await logout();
+      } finally {
+        setCheckingUser(false);
+      }
+    };
+
+    checkCurrentUser();
+  }, [isAuthenticated, isLoading, logout]);
+
+  // Still restoring the SecureStore session.
+  if (isLoading || checkingUser) {
+    return null;
   }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
+
+  // Not authenticated.
+  if (!isAuthenticated || !currentUser) {
+    return <Redirect href="/(auth)/role-selection" />;
   }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
+
+  // --------------------------------
+  // OWNER FLOW
+  // --------------------------------
+  if (currentUser.role === "owner") {
+    return <Redirect href="/(owner)" />;
+  }
+
+  // --------------------------------
+  // MEMBER FLOW
+  // --------------------------------
+
+  // Member has no active membership.
+  if (
+    currentUser.role === "member" &&
+    currentUser.membership?.status !== "active"
+  ) {
+    return <Redirect href="/(auth)/join-gym" />;
+  }
+
+  // Member has an active membership.
+  return <Redirect href="/(member)" />;
 }
-
-export default function HomeScreen() {
-  return (
-    <ThemedView style={styles.container}>
-      <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
-
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
-
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
-
-        {Platform.OS === 'web' && <WebBadge />}
-      </SafeAreaView>
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
-  },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  code: {
-    textTransform: 'uppercase',
-  },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
-  },
-});
