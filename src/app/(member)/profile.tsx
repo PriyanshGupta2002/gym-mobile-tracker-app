@@ -1,23 +1,88 @@
 import { router } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
-import { Card } from "@/components/ui/card";
 import { Screen } from "@/components/ui/screen";
+import { getCurrentUser, type CurrentUserResponse } from "@/services/auth";
 import { useAuthStore } from "@/store/auth-store";
 
+import { MembershipSummaryCard } from "@/components/member/profile/membership-summary-card";
+import { ProfileActionCard } from "@/components/member/profile/profile-action-card";
+import { ProfileHeader } from "@/components/member/profile/profile-header";
+import { ProfileInfoCard } from "@/components/member/profile/profile-info-card";
+
 export default function ProfileScreen() {
-  const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+
+  const [user, setUser] = useState<CurrentUserResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadProfile = useCallback(async () => {
+    try {
+      const me = await getCurrentUser();
+      setUser(me);
+    } catch (error) {
+      console.error("Failed to load profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   const handleLogout = async () => {
     try {
       await logout();
-
       router.replace("/(auth)/role-selection");
     } catch (error) {
       console.error("Failed to logout:", error);
     }
   };
+
+  if (loading) {
+    return (
+      <Screen>
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" />
+
+          <Text className="mt-4 text-sm text-secondary">
+            Loading profile...
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
+
+  if (!user) {
+    return (
+      <Screen>
+        <View className="flex-1 items-center justify-center px-6">
+          <Text className="text-xl font-bold text-primary">
+            Unable to load profile
+          </Text>
+
+          <Text className="mt-2 text-center text-sm text-secondary">
+            Please try again.
+          </Text>
+
+          <Pressable
+            onPress={loadProfile}
+            className="mt-5 rounded-xl bg-accent px-6 py-3"
+          >
+            <Text className="font-bold text-white">Try Again</Text>
+          </Pressable>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen className="px-0">
@@ -34,121 +99,40 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Profile Card */}
-        <Card className="mt-7">
-          <View className="items-center">
-            {/* Avatar */}
-            <View className="h-20 w-20 items-center justify-center rounded-full bg-accent/15">
-              <Text className="text-3xl font-bold text-accent">
-                {user?.name?.charAt(0)?.toUpperCase() || "M"}
-              </Text>
-            </View>
+        {/* Profile Header */}
+        <ProfileHeader
+          name={user.name || ""}
+          phone={user.phone}
+          role={user.role}
+        />
 
-            {/* Name */}
-            <Text className="mt-4 text-2xl font-bold text-primary">
-              {user?.name || "Member"}
-            </Text>
+        {/* Membership */}
+        <Text className="mb-3 mt-8 text-lg font-bold text-primary">
+          Your Membership
+        </Text>
 
-            {/* Phone */}
-            <Text className="mt-1 text-sm text-secondary">
-              {user?.phone || "No phone number"}
-            </Text>
-
-            {/* Role */}
-            <View className="mt-4 rounded-full bg-accent/15 px-4 py-2">
-              <Text className="text-xs font-bold uppercase text-accent">
-                {user?.role || "member"}
-              </Text>
-            </View>
-          </View>
-        </Card>
+        <MembershipSummaryCard membership={user.membership} />
 
         {/* Account */}
         <Text className="mb-3 mt-8 text-lg font-bold text-primary">
           Account
         </Text>
 
-        <Card className="p-0">
-          {/* Name */}
-          <View className="flex-row items-center justify-between px-4 py-5">
-            <View>
-              <Text className="text-xs text-secondary">NAME</Text>
-
-              <Text className="mt-1 text-base font-semibold text-primary">
-                {user?.name || "Not set"}
-              </Text>
-            </View>
-          </View>
-
-          <View className="border-t border-border" />
-
-          {/* Phone */}
-          <View className="flex-row items-center justify-between px-4 py-5">
-            <View>
-              <Text className="text-xs text-secondary">PHONE</Text>
-
-              <Text className="mt-1 text-base font-semibold text-primary">
-                {user?.phone || "Not available"}
-              </Text>
-            </View>
-          </View>
-
-          <View className="border-t border-border" />
-
-          {/* Role */}
-          <View className="flex-row items-center justify-between px-4 py-5">
-            <View>
-              <Text className="text-xs text-secondary">ACCOUNT TYPE</Text>
-
-              <Text className="mt-1 text-base font-semibold capitalize text-primary">
-                {user?.role || "Member"}
-              </Text>
-            </View>
-          </View>
-        </Card>
+        <ProfileInfoCard name={user.name || ""} phone={user.phone} />
 
         {/* Settings */}
         <Text className="mb-3 mt-8 text-lg font-bold text-primary">
           Settings
         </Text>
 
-        <Card className="p-0">
-          <Pressable
-            onPress={() => {}}
-            className="flex-row items-center justify-between px-4 py-5"
-          >
-            <View>
-              <Text className="text-base font-semibold text-primary">
-                Notifications
-              </Text>
-
-              <Text className="mt-1 text-sm text-secondary">
-                Manage notification preferences
-              </Text>
-            </View>
-
-            <Text className="text-xl text-secondary">›</Text>
-          </Pressable>
-
-          <View className="border-t border-border" />
-
-          <Pressable
-            onPress={() => {}}
-            className="flex-row items-center justify-between px-4 py-5"
-          >
-            <View>
-              <Text className="text-base font-semibold text-primary">
-                Help & Support
-              </Text>
-
-              <Text className="mt-1 text-sm text-secondary">
-                Get help with your account
-              </Text>
-            </View>
-
-            <Text className="text-xl text-secondary">›</Text>
-          </Pressable>
-        </Card>
+        <ProfileActionCard
+          onNotifications={() => {
+            // TODO
+          }}
+          onHelp={() => {
+            // TODO
+          }}
+        />
 
         {/* Logout */}
         <Pressable
@@ -158,7 +142,6 @@ export default function ProfileScreen() {
           <Text className="font-bold text-red-400">Log out</Text>
         </Pressable>
 
-        {/* App Version */}
         <Text className="mt-6 text-center text-xs text-secondary">GymApp</Text>
       </ScrollView>
     </Screen>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
   ActivityIndicator,
+  Pressable,
   RefreshControl,
   ScrollView,
   Text,
@@ -14,6 +15,7 @@ import { getMyAttendanceSummary } from "@/services/attendance";
 import { CurrentUserResponse, getCurrentUser } from "@/services/auth";
 import { useAttendanceStore } from "@/store/attendance-store";
 import { useAuthStore } from "@/store/auth-store";
+import { router } from "expo-router";
 
 export default function MemberHomeScreen() {
   const user = useAuthStore((state) => state.user);
@@ -178,38 +180,63 @@ export default function MemberHomeScreen() {
         </View>
 
         {/* -------------------------
-            MEMBERSHIP
-        ------------------------- */}
+    MEMBERSHIP
+------------------------- */}
 
-        <Card className="mt-7">
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-semibold tracking-wider text-secondary">
-              MEMBERSHIP
-            </Text>
-
-            <View className="rounded-full bg-accent/15 px-3 py-1">
-              <Text className="text-xs font-bold text-accent">
-                ● {membership?.status || "ACTIVE"}
+        <Pressable
+          className="mt-7"
+          onPress={() => router.push("/(member)/membership")}
+        >
+          <Card>
+            <View className="flex-row items-center justify-between">
+              <Text className="text-xs font-semibold tracking-wider text-secondary">
+                MEMBERSHIP
               </Text>
+
+              <View className="rounded-full bg-accent/15 px-3 py-1">
+                <Text className="text-xs font-bold text-accent">
+                  ● {membership?.status.toLocaleUpperCase() || "ACTIVE"}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <Text className="mt-5 text-2xl font-bold text-primary">
-            {gym?.name || "Gym Membership"}
-          </Text>
-
-          {gym?.city && (
-            <Text className="mt-1 text-sm text-secondary">{gym.city}</Text>
-          )}
-
-          <View className="mt-5 border-t border-border pt-4">
-            <Text className="text-xs text-secondary">Member since</Text>
-
-            <Text className="mt-1 text-sm font-semibold text-primary">
-              {formatDate(membership?.joined_at)}
+            <Text className="mt-5 text-2xl font-bold text-primary">
+              {gym?.name || "Gym Membership"}
             </Text>
-          </View>
-        </Card>
+
+            {gym?.city && (
+              <Text className="mt-1 text-sm text-secondary">{gym.city}</Text>
+            )}
+
+            {membership?.plan?.name && (
+              <View className="mt-4 rounded-xl bg-surface-light p-3">
+                <Text className="text-xs text-secondary">CURRENT PLAN</Text>
+
+                <Text className="mt-1 text-sm font-semibold text-primary">
+                  {membership.plan.name}
+                </Text>
+              </View>
+            )}
+
+            <View className="mt-5 flex-row items-center justify-between border-t border-border pt-4">
+              <View>
+                <Text className="text-xs text-secondary">Member since</Text>
+
+                <Text className="mt-1 text-sm font-semibold text-primary">
+                  {formatDate(membership?.joined_at)}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center">
+                <Text className="text-sm font-semibold text-accent">
+                  View plans
+                </Text>
+
+                <Text className="ml-2 text-lg text-accent">→</Text>
+              </View>
+            </View>
+          </Card>
+        </Pressable>
 
         {/* -------------------------
             STATS

@@ -29,11 +29,23 @@ export type Gym = {
 
 export type Membership = {
   id: string;
-  status: "active" | "expired" | "suspended";
+  status: "active" | "expired" | "suspended" | "pending";
   joined_at: string;
   gym: Gym;
-};
 
+  // Current membership plan
+  plan?: {
+    id: string;
+    name: string;
+    duration_days: number;
+    price: string;
+  } | null;
+
+  starts_at?: string | null;
+  expires_at?: string | null;
+  payment_method?: "CASH" | "UPI" | "CARD" | "OTHER" | null;
+  amount_paid?: string | null;
+};
 export type UpdateProfileResponse = {
   name: string;
 };

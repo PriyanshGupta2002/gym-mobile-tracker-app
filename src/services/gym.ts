@@ -37,6 +37,13 @@ export type GymMembershipsResponse = {
   today_attendance: number;
 };
 
+export type UpdateGymRequest = {
+  name: string;
+  city: string;
+};
+
+export type UpdateGymResponse = Gym;
+
 export async function createGym(
   name: string,
   city: string,
@@ -58,6 +65,15 @@ export async function getGymMemberships(
   const response = await api.get<GymMembershipsResponse>(
     `/gyms/${gymId}/members`,
   );
+
+  return response.data;
+}
+
+export async function updateGym(
+  gymId: string,
+  data: UpdateGymRequest,
+): Promise<UpdateGymResponse> {
+  const response = await api.patch<UpdateGymResponse>(`/gyms/${gymId}`, data);
 
   return response.data;
 }

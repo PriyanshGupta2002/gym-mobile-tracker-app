@@ -61,7 +61,7 @@ export default function OwnerLayout() {
       />
 
       <Tabs.Screen
-        name="memberships"
+        name="membership-plans"
         options={{
           href: null,
         }}

@@ -1,28 +1,29 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import {
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  Text,
+  View,
+} from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Screen } from "@/components/ui/screen";
 
-import { getCurrentUser } from "@/services/auth";
+import { getCurrentUser, type CurrentUserResponse } from "@/services/auth";
 import { getGymMemberships, type GymMembershipsResponse } from "@/services/gym";
 
-import { useAuthStore } from "@/store/auth-store";
 import { useOwnerStore } from "@/store/owner-store";
 
 export default function OwnerHomeScreen() {
-  const user = useAuthStore((state) => state.user);
-  const logout = useAuthStore((state) => state.logout);
-
   // ---------------------------------------------------------
   // Owner store
   // ---------------------------------------------------------
 
   const gyms = useOwnerStore((state) => state.gyms);
   const selectedGym = useOwnerStore((state) => state.selectedGym);
-
   const setGyms = useOwnerStore((state) => state.setGyms);
   const selectGym = useOwnerStore((state) => state.selectGym);
 
@@ -30,10 +31,18 @@ export default function OwnerHomeScreen() {
   // Page state
   // ---------------------------------------------------------
 
+  const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(
+    null,
+  );
+
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState("");
 
+  // ---------------------------------------------------------
   // Gym-specific data
+  // ---------------------------------------------------------
+
   const [memberships, setMemberships] = useState<GymMembershipsResponse | null>(
     null,
   );
@@ -42,81 +51,103 @@ export default function OwnerHomeScreen() {
   const [membershipsError, setMembershipsError] = useState("");
 
   // ---------------------------------------------------------
-  // Load owner's gyms
+  // Load owner data
+  // ---------------------------------------------------------
+
+  const loadOwnerData = async (showLoader = false) => {
+    try {
+      if (showLoader) {
+        setLoading(true);
+      }
+
+      setError("");
+
+      const me = await getCurrentUser();
+
+      // /users/me is the source of truth
+      setCurrentUser(me);
+      setGyms(me.gym ?? []);
+    } catch (error) {
+      console.error("Failed to fetch owner data:", error);
+
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Unable to load your gym information.",
+      );
+    } finally {
+      if (showLoader) {
+        setLoading(false);
+      }
+    }
+  };
+
+  // ---------------------------------------------------------
+  // Load selected gym data
+  // ---------------------------------------------------------
+
+  const loadGymData = async () => {
+    if (!selectedGym?.id) {
+      setMemberships(null);
+      return;
+    }
+
+    try {
+      setMembershipsLoading(true);
+      setMembershipsError("");
+
+      const response = await getGymMemberships(selectedGym.id);
+
+      setMemberships(response);
+    } catch (error) {
+      console.error("Failed to fetch gym memberships:", error);
+
+      setMembershipsError(
+        error instanceof Error ? error.message : "Unable to load gym members.",
+      );
+
+      setMemberships(null);
+    } finally {
+      setMembershipsLoading(false);
+    }
+  };
+
+  // ---------------------------------------------------------
+  // Initial load
   // ---------------------------------------------------------
 
   useEffect(() => {
-    const loadOwnerData = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const me = await getCurrentUser();
-
-        // /users/me is the source of truth for owner gyms.
-        setGyms(me.gym ?? []);
-      } catch (error) {
-        console.error("Failed to fetch owner data:", error);
-
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load your gym information.",
-        );
-      } finally {
-        setLoading(false);
-      }
+    const load = async () => {
+      await loadOwnerData(true);
     };
 
-    loadOwnerData();
-  }, [setGyms]);
+    load();
+  }, []);
 
   // ---------------------------------------------------------
   // Load data whenever selected gym changes
   // ---------------------------------------------------------
 
   useEffect(() => {
-    if (!selectedGym?.id) {
-      setMemberships(null);
-      return;
-    }
-
-    const loadGymData = async () => {
-      try {
-        setMembershipsLoading(true);
-        setMembershipsError("");
-
-        const response = await getGymMemberships(selectedGym.id);
-
-        setMemberships(response);
-      } catch (error) {
-        console.error("Failed to fetch gym memberships:", error);
-
-        setMembershipsError(
-          error instanceof Error
-            ? error.message
-            : "Unable to load gym members.",
-        );
-
-        setMemberships(null);
-      } finally {
-        setMembershipsLoading(false);
-      }
-    };
-
     loadGymData();
   }, [selectedGym?.id]);
 
   // ---------------------------------------------------------
-  // Logout
+  // Pull to refresh
   // ---------------------------------------------------------
 
-  const handleLogout = async () => {
-    useOwnerStore.getState().clearGyms();
+  const handleRefresh = async () => {
+    try {
+      setRefreshing(true);
 
-    await logout();
+      // Refresh /users/me
+      await loadOwnerData(false);
 
-    router.replace("/(auth)/role-selection");
+      // Refresh selected gym dashboard
+      await loadGymData();
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   // ---------------------------------------------------------
@@ -160,32 +191,32 @@ export default function OwnerHomeScreen() {
           <View className="mt-6">
             <Button onPress={handleRetry}>Try again</Button>
           </View>
-
-          <View className="mt-4">
-            <Button onPress={handleLogout}>Logout</Button>
-          </View>
         </View>
       </Screen>
     );
   }
 
+  // ---------------------------------------------------------
+  // Screen
+  // ---------------------------------------------------------
+
   return (
-    <Screen>
-      <View className="flex-1 px-1 pt-6">
+    <Screen className="px-0">
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="px-5 pb-10 pt-6"
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+      >
         {/* Header */}
 
         <View>
           <Text className="text-base text-secondary">Good morning</Text>
 
           <Text className="mt-1 text-3xl font-bold text-primary">
-            {user?.name ?? "Owner"} 👋
+            {currentUser?.name ?? "Owner"} 👋
           </Text>
-        </View>
-
-        {/* Logout */}
-
-        <View className="mt-4">
-          <Button onPress={handleLogout}>Logout</Button>
         </View>
 
         {/* Gym selector */}
@@ -329,7 +360,7 @@ export default function OwnerHomeScreen() {
             </Card>
           </View>
         )}
-      </View>
+      </ScrollView>
     </Screen>
   );
 }

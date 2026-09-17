@@ -12,6 +12,7 @@ type OwnerState = {
 
   setGyms: (gyms: OwnerGym[]) => void;
   selectGym: (gymId: string) => void;
+  updateGym: (gym: OwnerGym) => void;
   clearGyms: () => void;
 };
 
@@ -19,20 +20,28 @@ export const useOwnerStore = create<OwnerState>((set, get) => ({
   gyms: [],
   selectedGym: null,
 
+  // ---------------------------------------------------------
+  // Set gyms
+  // ---------------------------------------------------------
+
   setGyms: (gyms) => {
     const currentSelectedGym = get().selectedGym;
 
-    // Keep the currently selected gym if it still exists.
-    if (
-      currentSelectedGym &&
-      gyms.some((gym) => gym.id === currentSelectedGym.id)
-    ) {
-      set({
-        gyms,
-        selectedGym: currentSelectedGym,
-      });
+    // Keep the same selected gym, but use the fresh object
+    // from the API response.
+    if (currentSelectedGym) {
+      const updatedSelectedGym = gyms.find(
+        (gym) => gym.id === currentSelectedGym.id,
+      );
 
-      return;
+      if (updatedSelectedGym) {
+        set({
+          gyms,
+          selectedGym: updatedSelectedGym,
+        });
+
+        return;
+      }
     }
 
     // Otherwise select the first gym.
@@ -41,6 +50,10 @@ export const useOwnerStore = create<OwnerState>((set, get) => ({
       selectedGym: gyms[0] ?? null,
     });
   },
+
+  // ---------------------------------------------------------
+  // Select gym
+  // ---------------------------------------------------------
 
   selectGym: (gymId) => {
     const gym = get().gyms.find((item) => item.id === gymId);
@@ -53,6 +66,27 @@ export const useOwnerStore = create<OwnerState>((set, get) => ({
       selectedGym: gym,
     });
   },
+
+  // ---------------------------------------------------------
+  // Update gym
+  // ---------------------------------------------------------
+
+  updateGym: (updatedGym) => {
+    set((state) => ({
+      gyms: state.gyms.map((gym) =>
+        gym.id === updatedGym.id ? updatedGym : gym,
+      ),
+
+      selectedGym:
+        state.selectedGym?.id === updatedGym.id
+          ? updatedGym
+          : state.selectedGym,
+    }));
+  },
+
+  // ---------------------------------------------------------
+  // Clear gyms
+  // ---------------------------------------------------------
 
   clearGyms: () => {
     set({

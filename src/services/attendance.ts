@@ -53,6 +53,25 @@ export interface AttendanceHistoryResponse {
   records: AttendanceHistoryRecord[];
 }
 
+export type GymAttendanceMember = {
+  id: string;
+  name: string | null;
+  phone: string;
+};
+
+export type GymAttendanceItem = {
+  id: string;
+  checked_in_at: string;
+  member: GymAttendanceMember;
+};
+
+export type GymAttendanceResponse = {
+  gym_id: string;
+  date: string;
+  total_check_ins: number;
+  records: GymAttendanceItem[];
+};
+
 // ---------------------------------------------------------
 // Check In
 // ---------------------------------------------------------
@@ -89,6 +108,24 @@ export async function getMyAttendanceHistory(
       year,
     },
   });
+
+  return response.data;
+}
+
+export async function getGymAttendance(
+  gymId: string,
+  date?: string,
+): Promise<GymAttendanceResponse> {
+  const response = await api.get<GymAttendanceResponse>(
+    `/attendance/gyms/${gymId}`,
+    {
+      params: date
+        ? {
+            attendance_date: date,
+          }
+        : undefined,
+    },
+  );
 
   return response.data;
 }

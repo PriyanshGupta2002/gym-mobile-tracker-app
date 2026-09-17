@@ -67,10 +67,7 @@ export default function Index() {
   // --------------------------------
 
   // Member has no active membership.
-  if (
-    currentUser.role === "member" &&
-    currentUser.membership?.status !== "active"
-  ) {
+  if (currentUser.role === "member" && currentUser.membership === null) {
     return <Redirect href="/(auth)/join-gym" />;
   }
 
